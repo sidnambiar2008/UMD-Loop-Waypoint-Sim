@@ -48,7 +48,7 @@ class WaypointNavigator(Node):
             twist.linear.x = 0.0
             twist.angular.z = 0.0
             self.cmd_pub.publish(twist)
-            self.destroy_timer(self.timer) # Shuts down the thread cleanly to prevent runaway log prints
+            #self.destroy_timer(self.timer) # Shuts down the thread cleanly to prevent runaway log prints
             return
 
         x_distance = self.target_x - self.x
@@ -71,7 +71,7 @@ class WaypointNavigator(Node):
         elif (distance < 0.3):
             self.get_logger().info(f'Waypoint {self.current_wp_idx} reached! Moving to the next waypoint...')
             self.current_wp_idx += 1
-            
+
             if self.current_wp_idx >= len(self.waypoints):
                 self.get_logger().info('All sequential waypoints cleared!')
                 twist.linear.x = 0.0
