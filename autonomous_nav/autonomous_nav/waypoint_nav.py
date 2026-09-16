@@ -42,6 +42,15 @@ class WaypointNavigator(Node):
         self.yaw = math.atan2(siny_cosp, cosy_cosp)
     
     def control_loop(self):
+        if self.current_wp_idx >= len(self.waypoints):
+            self.get_logger().info('--- MISSION COMPLETION: All 5 Randomized Waypoint Goals Cleared! ---')
+            twist = Twist()
+            twist.linear.x = 0.0
+            twist.angular.z = 0.0
+            self.cmd_pub.publish(twist)
+            self.destroy_timer(self.timer) # Shuts down the thread cleanly to prevent runaway log prints
+            return
+
         x_distance = self.target_x - self.x
         y_distance = self.target_y - self.y
 
@@ -55,13 +64,14 @@ class WaypointNavigator(Node):
 
         # Immediate obstable check, spins away from the wall
         if self.obstacle_ahead:
-            self.get_logger().info('Obstacle detected! Stopping the robot.')
+            self.get_logger().info('Obstacle detected! ')
             twist.linear.x = 0.0
             twist.angular.z = 0.6
 
         elif (distance < 0.3):
             self.get_logger().info(f'Waypoint {self.current_wp_idx} reached! Moving to the next waypoint...')
             self.current_wp_idx += 1
+            
             if self.current_wp_idx >= len(self.waypoints):
                 self.get_logger().info('All sequential waypoints cleared!')
                 twist.linear.x = 0.0
