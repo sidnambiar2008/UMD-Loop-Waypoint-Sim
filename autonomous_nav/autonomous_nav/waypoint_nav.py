@@ -47,8 +47,9 @@ class WaypointNavigator(Node):
             twist = Twist()
             twist.linear.x = 0.0
             twist.angular.z = 0.0
+            
             self.cmd_pub.publish(twist)
-            #self.destroy_timer(self.timer) # Shuts down the thread cleanly to prevent runaway log prints
+            self.destroy_timer(self.timer) # Shuts down the thread cleanly to prevent runaway log prints
             return
 
         x_distance = self.target_x - self.x
