@@ -30,6 +30,14 @@ class WaypointNavigator(Node):
     def odom_callback(self, msg):
         self.x = msg.pose.pose.position.x
         self.y = msg.pose.pose.position.y
+
+        # Gets the quaternion from the odometry message
+        q = msg.pose.pose.orientation
+        
+        # Translate 3D aerospace math into a flat steering heading (Yaw in Euler Angles)
+        siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
+        cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+        self.yaw = math.atan2(siny_cosp, cosy_cosp)
     
     def control_loop(self):
         x_distance = self.target_x - self.x
@@ -65,7 +73,7 @@ class WaypointNavigator(Node):
             self.get_logger().info('Moving towards the goal...')
             twist.linear.x = 0.5 * distance
             twist.angular.z = 0.0
-            
+
         self.cmd_pub.publish(twist)
     
     def laser_callback(self, msg):
