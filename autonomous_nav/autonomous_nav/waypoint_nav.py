@@ -3,24 +3,28 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 import math
+from sensor_msgs.msg import LaserScan
 
 class WaypointNavigator(Node):
     def __init__(self):
         super().__init__('waypoint_navigator')
 
-        # Create a publisher that publishes Twist messages for cmd_vel
         self.cmd_pub = self.create_publisher(Twist, 'cmd_vel', 10)
-
         self.odom_sub = self.create_subscription(Odometry, 'odom', self.odom_callback, 10)
+        self.laser_sub = self.create_subscription(LaserScan, 'laser_scan', self.laser_callback, 10)
 
-        # Initialize starting odometry position
+
+        # Starting odometry position
         self.x = 0.0
         self.y = 0.0
+
+        # Sample target positions
         self.target_x = 4.0
         self.target_y = 3.0
-        self.yaw = 0.0
-        self.obstacle_ahead = false;
 
+        # Heading of the robot 
+        self.yaw = 0.0
+        self.obstacle_ahead = False
         self.timer = self.create_timer(0.1, self.control_loop)
         
     def odom_callback(self, msg):
@@ -39,19 +43,61 @@ class WaypointNavigator(Node):
 
         twist = Twist()
 
-        if (distance < 0.3):
+        # Immediate obstable check, spins away from the wall
+        if self.obstacle_ahead:
+            self.get_logger().info('Obstacle detected! Stopping the robot.')
+            twist.linear.x = 0.0
+            twist.angular.z = 0.6
+
+        elif (distance < 0.3):
             self.get_logger().info('Goal is reached!')
             twist.linear.x = 0.0
             twist.angular.z = 0.0
+
+        # Adjusts Angle
         elif (abs(angle_error) > 0.2):
             self.get_logger().info('Rotating to face the goal...')
             twist.linear.x = 0.0
             twist.angular.z = 0.5 * angle_error
+
+        # Moves towards the goal since angle is close and distance is not close
         else:
             self.get_logger().info('Moving towards the goal...')
             twist.linear.x = 0.5 * distance
             twist.angular.z = 0.0
+            
+        self.cmd_pub.publish(twist)
+    
+    def laser_callback(self, msg):
+        front_rays = msg.ranges[70:110]
 
+        if front_rays:
+            min_distance = min(front_rays)
+
+            # Ensures there is an obstacle centered in front of us
+            if min_distance < 0.5:
+                self.obstacle_ahead = True
+                self.get_logger().info('Obstacle detected ahead! Stopping the robot.')
+            else:
+                self.obstacle_ahead = False
+
+
+def main(args=None):
+    # Initialize the ROS2 Communication Stack
+    rclpy.init(args=args)
+
+    # Create an instance of a node
+    node = WaypointNavigator()
+
+    # Spin the node so it stays alive and processes its 10Hz timer loops
+    rclpy.spin(node)
+
+    # Clean up memory and shutdown the ROS2 Communication Stack
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
 
         
         
