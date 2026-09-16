@@ -4,6 +4,7 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 import math
 from sensor_msgs.msg import LaserScan
+import random
 
 class WaypointNavigator(Node):
     def __init__(self):
@@ -18,9 +19,10 @@ class WaypointNavigator(Node):
         self.x = 0.0
         self.y = 0.0
 
-        # Sample target positions
-        self.target_x = 4.0
-        self.target_y = 3.0
+        # Random target positions
+        self.waypoints = [(random.uniform(2.0, 6.0), random.uniform(-3.0, 3.0)) for _ in range(5)]
+        self.current_wp_idx = 0
+        self.target_x, self.target_y = self.waypoints[self.current_wp_idx]
 
         # Heading of the robot 
         self.yaw = 0.0
@@ -58,9 +60,15 @@ class WaypointNavigator(Node):
             twist.angular.z = 0.6
 
         elif (distance < 0.3):
-            self.get_logger().info('Goal is reached!')
-            twist.linear.x = 0.0
-            twist.angular.z = 0.0
+            self.get_logger().info(f'Waypoint {self.current_wp_idx} reached! Moving to the next waypoint...')
+            self.current_wp_idx += 1
+            if self.current_wp_idx >= len(self.waypoints):
+                self.get_logger().info('All sequential waypoints cleared!')
+                twist.linear.x = 0.0
+                twist.angular.z = 0.0
+            else:
+                self.target_x, self.target_y = self.waypoints[self.current_wp_idx]
+                
 
         # Adjusts Angle
         elif (abs(angle_error) > 0.2):
@@ -82,10 +90,10 @@ class WaypointNavigator(Node):
         if front_rays:
             min_distance = min(front_rays)
 
-            # Ensures there is an obstacle centered in front of us
-            if min_distance < 0.5:
+            # Ensures the obstacle centered in front of us is detected
+            if min_distance < 1.5:
                 self.obstacle_ahead = True
-                self.get_logger().info('Obstacle detected ahead! Stopping the robot.')
+                self.get_logger().info('Obstacle detected ahead!.')
             else:
                 self.obstacle_ahead = False
 
